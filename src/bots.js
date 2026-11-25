@@ -3,21 +3,28 @@ import * as THREE from 'three';
 import { collide, groundAt, findPath, lineClear, randomNear, inSite, SITES, walkClear } from './map.js';
 import { WEAPONS, newGun, ARMOR } from './weapons.js';
 import { makeSoldier } from './models.js';
+import { AGENTS, KEYS, useAbility } from './agents.js';
 
 export const TEAM_COLOR = { atk: 0xff7a45, def: 0x2bb3a3 };
 const EYE = 1.58;
 
 export function makeBotMesh(team) { return makeSoldier(team, TEAM_COLOR[team]); }
 
-// 라운드 시작 때 장비 사기 (돈을 아끼는 라운드도 있다)
+// 라운드 시작 때 장비 사기 (돈이 적으면 아낀다)
 export function botBuy(b, teamSave) {
-  const c = b.credits;
-  if (!teamSave && (!b.primary || b.primary.w.id === 'burst')) {
-    if (c >= WEAPONS.lancer.price + ARMOR.light.price) { b.primary = newGun(Math.random() < 0.18 && c >= WEAPONS.longshot.price + 400 ? 'longshot' : 'lancer'); b.credits -= b.primary.w.price; }
-    else if (!b.primary && c >= WEAPONS.burst.price + ARMOR.light.price) { b.primary = newGun('burst'); b.credits -= WEAPONS.burst.price; }
+  const c = () => b.credits;
+  const buy = (id) => { b.primary = newGun(id); b.credits -= WEAPONS[id].price; };
+  if (!teamSave && (!b.primary || WEAPONS[b.primary.w.id].price < 2000)) {
+    if (c() >= 3900) buy(Math.random() < 0.15 && c() >= 5700 ? 'longshot' : Math.random() < 0.5 ? 'lancer' : 'trident');
+    else if (c() >= 2650 && !b.primary) buy(Math.random() < 0.5 ? 'pulse' : 'burst');
+    else if (c() >= 2000 && !b.primary) buy(Math.random() < 0.5 ? 'burst' : 'scatter');
   }
-  if (b.armor < 50 && b.credits >= ARMOR.heavy.price + 800) { b.armor = 50; b.credits -= ARMOR.heavy.price; }
-  else if (b.armor < 25 && b.credits >= ARMOR.light.price) { b.armor = 25; b.credits -= ARMOR.light.price; }
+  if (!b.primary && b.sidearm.w.id === 'spark' && c() >= 800 && (teamSave ? c() >= 1600 : true) && Math.random() < 0.6) { b.sidearm = newGun('hail'); b.credits -= 800; }
+  if (b.armor < 50 && c() >= ARMOR.heavy.price + 900) { b.armor = 50; b.credits -= ARMOR.heavy.price; }
+  else if (b.armor < 25 && c() >= ARMOR.light.price) { b.armor = 25; b.credits -= ARMOR.light.price; }
+  // 능력 채우기
+  const a = AGENTS[b.agent];
+  for (const k of KEYS) { const d = a[k]; while (b.ab[k].n < d.max && d.price && c() >= d.price + 300) { b.ab[k].n++; b.credits -= d.price; } }
   b.gun = b.primary || b.sidearm;
 }
 
@@ -26,6 +33,7 @@ export const eyeOf = (u) => new THREE.Vector3(u.pos.x, u.pos.y + (u.crouch ? 1.1
 const flat = (a, b) => Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
 
 function canSee(G, b, e) {
+  if (b.blindT > 0) return false;
   const d = flat(b, e);
   if (d > 80) return false;
   if (d > 4) { // 등 뒤는 못 본다
@@ -98,6 +106,7 @@ export function updateBot(G, b, dt) {
   if (gun.reloading > 0) { gun.reloading -= dt; if (gun.reloading <= 0) { const take = Math.min(gun.w.mag - gun.mag, gun.reserve); gun.mag += take; gun.reserve -= take; } }
   b.running = false;
   if (R.phase === 'buy') return;
+  const sm = G.speedMul(b);
 
   // 보기 (0.12초마다) + 가까운 발소리 듣기
   b.scanT -= dt;
@@ -123,6 +132,9 @@ export function updateBot(G, b, dt) {
     }
   }
 
+  botAbilities(G, b, dt);
+  if (b.blindT > 0) b.target = null;
+
   // 싸우기
   if (b.target && b.target.alive) {
     b.plantT = 0; b.defuseT = 0;
@@ -134,10 +146,10 @@ export function updateBot(G, b, dt) {
     if (b.retreatT > 0) {
       b.retreatT -= dt; b.crouch = false;
       const d = flat(b, t) || 1;
-      b.moving = stepTo(b, (b.pos.x - t.pos.x) / d, (b.pos.z - t.pos.z) / d, 3.2 * dt) > 0.001;
+      b.moving = stepTo(b, (b.pos.x - t.pos.x) / d, (b.pos.z - t.pos.z) / d, 3.2 * sm * dt) > 0.001;
     } else if (!b.crouch) { // 옆걸음
       b.strafeT -= dt; if (b.strafeT <= 0) { b.strafeT = 0.35 + Math.random() * 0.7; b.strafe = Math.random() < 0.4 ? 0 : (Math.random() < 0.5 ? -1 : 1); }
-      b.moving = b.strafe ? stepTo(b, Math.cos(b.yaw) * b.strafe, -Math.sin(b.yaw) * b.strafe, 2.4 * dt) > 0.001 : false;
+      b.moving = b.strafe ? stepTo(b, Math.cos(b.yaw) * b.strafe, -Math.sin(b.yaw) * b.strafe, 2.4 * sm * dt) > 0.001 : false;
     } else b.moving = false;
     b.reactT -= dt;
     if (b.reactT <= 0 && Math.abs(angDiff(b.yaw, want)) < 0.22) botFire(G, b, t);
@@ -148,7 +160,7 @@ export function updateBot(G, b, dt) {
   if (gun.mag < gun.w.mag * 0.4 && gun.reloading <= 0 && gun.reserve > 0) gun.reloading = gun.w.reload;
 
   if (b.waitT > 0) { b.waitT -= dt; return; }
-  const speed = 5.4;
+  const speed = 5.4 * sm;
   const core = R.core;
 
   // 공격팀
@@ -159,9 +171,11 @@ export function updateBot(G, b, dt) {
     }
     const s = SITES[R.attackSite];
     // 지점에 들어가기 직전 연막으로 수비 쪽 길을 막는다
-    if (!R.smoked.atk && R.phase === 'live' && Math.hypot(b.pos.x - s.x, b.pos.z - s.z) < 20) {
-      R.smoked.atk = true; G.addSmoke(new THREE.Vector3(s.x < 0 ? -34 : 34, 1.8, -26), b);
-      G.addSmoke(new THREE.Vector3(s.x < 0 ? -16 : 16, 1.8, -10), b);
+    const smk = hasKind(b, 'smoke');
+    if (smk && !R.smoked.atk && R.phase === 'live' && Math.hypot(b.pos.x - s.x, b.pos.z - s.z) < 20) {
+      R.smoked.atk = true;
+      useAbility(G, b, smk, aimAt(b, s.x < 0 ? -34 : 34, 1.8, -26));
+      const smk2 = hasKind(b, 'smoke'); if (smk2) useAbility(G, b, smk2, aimAt(b, s.x < 0 ? -16 : 16, 1.8, -10));
     }
     if (core.state === 'carried' && core.carrier === b && R.phase === 'live') {
       if (inSite(b.pos.x, b.pos.z) && Math.hypot(b.pos.x - s.x, b.pos.z - s.z) < s.r - 2) {
@@ -186,12 +200,13 @@ export function updateBot(G, b, dt) {
   // 수비팀
   if (core.state === 'planted' && R.phase === 'planted') {
     if (Math.hypot(b.pos.x - core.pos.x, b.pos.z - core.pos.z) < 1.4) {
-      b.moving = false; b.crouch = true; b.defuseT += dt; G.progress(b, 'defuse', b.defuseT / 7);
+      b.moving = false; b.crouch = true; if (!b.defuseT && core.half) b.defuseT = 3.5; b.defuseT += dt; G.progress(b, 'defuse', b.defuseT / 7);
       if (b.defuseT >= 7) G.defuseCore(b);
       return;
     }
     // 해체하러 가기 전에 한 번 연막
-    if (!R.smoked.def && Math.hypot(b.pos.x - core.pos.x, b.pos.z - core.pos.z) < 18) { R.smoked.def = true; G.addSmoke(new THREE.Vector3(core.pos.x + (core.pos.x < 0 ? 0 : 0), 1.8, core.pos.z + 7), b); }
+    const dsm = hasKind(b, 'smoke');
+    if (dsm && !R.smoked.def && Math.hypot(b.pos.x - core.pos.x, b.pos.z - core.pos.z) < 18) { R.smoked.def = true; useAbility(G, b, dsm, aimAt(b, core.pos.x, 1.8, core.pos.z + 7)); }
     b.defuseT = 0; setGoal(G, b, core.pos.x, core.pos.z); moveAlong(G, b, dt, speed); return;
   }
   if (b.lastSeenT > 0) { b.lastSeenT -= dt; setGoal(G, b, b.lastSeen.x, b.lastSeen.z); moveAlong(G, b, dt, speed * 0.6); return; }
@@ -215,7 +230,7 @@ function lookAround(b, dt, toward) {
 function botFire(G, b, t) {
   const gun = b.gun, w = gun.w;
   if (gun.reloading > 0 || gun.cool > 0) return;
-  if (gun.mag <= 0) { if (gun.reserve > 0) gun.reloading = w.reload; else if (b.gun !== b.sidearm) b.gun = b.sidearm; return; }
+  if (gun.mag <= 0) { if (w.id === 'blades') { b.gun = b.ultGun || b.primary || b.sidearm; return; } if (gun.reserve > 0) gun.reloading = w.reload; else if (b.gun !== b.sidearm) b.gun = b.sidearm; return; }
   gun.mag--; gun.cool = w.rate * (w.auto ? 1.45 : 1.35) + (w.auto ? 0 : Math.random() * 0.15);
   b.burst++;
   const dist = flat(b, t);
@@ -225,7 +240,9 @@ function botFire(G, b, t) {
   if (b.crouch) p *= 1.12;
   if (b.moving) p *= 0.8;
   if (b.burst > 5 && w.auto) p *= 0.65;
-  if (w.id === 'longshot') p = Math.min(0.9, p * 1.25);
+  if (w.scope) p = Math.min(0.9, p * 1.25);
+  if (w.id === 'blades') p = Math.min(0.95, p * 1.4);
+  if (w.pellets && dist > 14) p *= 0.6;
   const hit = Math.random() < p;
   const head = hit && Math.random() < G.diff.head;
   const from = eyeOf(b); from.y -= 0.3;
@@ -233,5 +250,32 @@ function botFire(G, b, t) {
   const to = new THREE.Vector3(t.pos.x, t.pos.y + (head ? hy : hy - 0.6), t.pos.z);
   if (!hit) { to.x += (Math.random() - 0.5) * 2; to.y += (Math.random() - 0.3) * 1.2; to.z += (Math.random() - 0.5) * 2; }
   G.shotFx(b, from, to, w, !hit);
-  if (hit) G.damage(b, t, w, head, to);
+  if (!hit) return;
+  if (w.pellets) { const n = Math.max(1, Math.round(w.pellets * Math.max(0.12, Math.min(0.85, 1 - dist / 18)))); for (let i = 0; i < n && t.alive; i++) G.damage(b, t, w, i === 0 && head ? 'head' : 'body', to); }
+  else G.damage(b, t, w, head ? 'head' : 'body', to);
+}
+
+export const hasKind = (b, kind) => { const a = AGENTS[b.agent]; return KEYS.find((k) => a[k].kind === kind && b.ab[k].n > 0); };
+function aimAt(b, x, y, z) { const o = eyeOf(b); return { o, d: new THREE.Vector3(x, y, z).sub(o).normalize() }; }
+// 봇의 능력·궁극기 쓰기
+function botAbilities(G, b, dt) {
+  const a = AGENTS[b.agent], R = G.round;
+  b.abT = (b.abT || 0) - dt; if (b.abT > 0) return; b.abT = 0.5;
+  const t = b.target && b.target.alive ? b.target : null;
+  const hk = hasKind(b, 'heal'); if (hk && b.hp < 55 && !t) { useAbility(G, b, hk, aimAt(b, b.pos.x, b.pos.y + 1, b.pos.z - 1)); return; }
+  const fk = hasKind(b, 'flash'); if (fk && t && b.reactT > 0.1 && flat(b, t) > 7 && Math.random() < 0.3) { useAbility(G, b, fk, aimAt(b, (b.pos.x + t.pos.x) / 2, 1.8, (b.pos.z + t.pos.z) / 2)); return; }
+  const mk = hasKind(b, 'molly');
+  if (mk && b.team === 'atk' && R.phase === 'planted' && t && Math.hypot(t.pos.x - R.core.pos.x, t.pos.z - R.core.pos.z) < 5) { useAbility(G, b, mk, aimAt(b, R.core.pos.x, 0.2, R.core.pos.z)); return; }
+  if (mk && b.team === 'def' && t && inSite(t.pos.x, t.pos.z) && Math.random() < 0.4) { useAbility(G, b, mk, aimAt(b, t.pos.x, 0.2, t.pos.z)); return; }
+  const sk = hasKind(b, 'slow'); if (sk && t && flat(b, t) < 18 && Math.random() < 0.25) { useAbility(G, b, sk, aimAt(b, t.pos.x, 0.2, t.pos.z)); return; }
+  const rk = hasKind(b, 'recon');
+  if (rk && R.phase === 'live' && !t && R.t < 88 && Math.random() < 0.15) { const key = b.team === 'atk' ? R.attackSite : (b.role === 'mid' ? (Math.random() < 0.5 ? 'A' : 'B') : b.role); const s = SITES[key]; useAbility(G, b, rk, aimAt(b, s.x, 6, s.z + (b.team === 'atk' ? -8 : 10))); return; }
+  const wk = hasKind(b, 'wall'); if (wk && b.team === 'def' && t && inSite(t.pos.x, t.pos.z) && flat(b, t) > 8 && Math.random() < 0.3) { useAbility(G, b, wk, aimAt(b, (b.pos.x + t.pos.x) / 2, 0.5, (b.pos.z + t.pos.z) / 2)); return; }
+  if (b.ult >= G.ultCost(b) && R.phase !== 'end') {
+    const k = a.X.kind;
+    if (k === 'revealAll' && R.t < 85) useAbility(G, b, 'X', aimAt(b, 0, 1, 0));
+    else if ((k === 'blades' || k === 'rocket') && t) useAbility(G, b, 'X', aimAt(b, t.pos.x, t.pos.y + 1, t.pos.z));
+    else if (k === 'smokeWall' && b.team === 'atk' && R.phase === 'live' && Math.hypot(b.pos.x - SITES[R.attackSite].x, b.pos.z - SITES[R.attackSite].z) < 26) useAbility(G, b, 'X', aimAt(b, SITES[R.attackSite].x, 1.8, -32));
+    else if (k === 'revive' && !t && G.units.some((x) => !x.alive && x.team === b.team && x.diedRound === R.n)) useAbility(G, b, 'X', aimAt(b, 0, 1, 0));
+  }
 }

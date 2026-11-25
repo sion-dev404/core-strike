@@ -69,9 +69,11 @@ export function animateSoldier(root, dt, moving, crouch, flashOn) {
 
 /* ---------- 손에 든 총 (1인칭) ---------- */
 const vm = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.35, depthTest: false, ...o });
-export function makeViewGun(id, sleeveColor) {
+const SHAPE = { spark: 'spark', hail: 'spark', sting: 'burst', burst: 'burst', scatter: 'lancer', pulse: 'lancer', lancer: 'lancer', trident: 'lancer', hammer: 'lancer', pin: 'longshot', longshot: 'longshot', blades: 'blades' };
+export function makeViewGun(wid, sleeveColor, accentColor = 0xff7a45) {
+  const id = SHAPE[wid] || 'lancer';
   const g = new THREE.Group();
-  const metal = vm(0x2b3038), metal2 = vm(0x434a55), accent = vm({ spark: 0xff7a45, burst: 0x2bb3a3, lancer: 0xc8873f, longshot: 0x6d7fd1 }[id]), skin = vm(0xe9bf98, { metalness: 0 }), sleeve = vm(sleeveColor, { metalness: 0 });
+  const metal = vm(0x2b3038), metal2 = vm(0x434a55), accent = vm(accentColor), skin = vm(0xe9bf98, { metalness: 0 }), sleeve = vm(sleeveColor, { metalness: 0 });
   const box = (w, h, d, m, x, y, z, rx = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.x = rx; g.add(b); return b; };
   const cyl = (r, l, m, x, y, z) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 12), m); c.rotation.x = Math.PI / 2; c.position.set(x, y, z); g.add(c); return c; };
   let muzzleZ = -0.5;
@@ -87,6 +89,10 @@ export function makeViewGun(id, sleeveColor) {
     box(0.05, 0.2, 0.08, metal2, 0, -0.12, -0.12, 0.35); box(0.05, 0.12, 0.06, metal, 0, -0.08, 0.04, 0.3);
     box(0.06, 0.1, 0.22, accent, 0, 0.0, 0.16); cyl(0.02, 0.26, metal2, 0, 0.03, -0.58); box(0.03, 0.04, 0.12, metal2, 0, 0.095, -0.1);
     muzzleZ = -0.72;
+  } else if (id === 'blades') {
+    const glow = vm(0xc7d2ff, { emissive: 0x7f95ff, emissiveIntensity: 1.2 });
+    for (let i = 0; i < 3; i++) { const k = box(0.012, 0.05 - i * 0.008, 0.26, glow, -0.03 + i * 0.03, 0.02 + i * 0.01, -0.12 - i * 0.02); k.rotation.y = (i - 1) * 0.15; }
+    box(0.04, 0.06, 0.08, metal, 0, -0.02, 0.02); muzzleZ = -0.28;
   } else { // longshot
     box(0.075, 0.12, 0.58, metal, 0, 0.02, -0.22); box(0.08, 0.06, 0.24, accent, 0, -0.02, -0.38);
     box(0.06, 0.13, 0.08, metal, 0, -0.09, 0.03, 0.3); box(0.07, 0.12, 0.28, accent, 0, 0.0, 0.2);
