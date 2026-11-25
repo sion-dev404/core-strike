@@ -27,11 +27,12 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; margin: 0 2px; b
 #feed div { background: rgba(15,20,27,.7); padding: 4px 10px; border-radius: 6px; }
 #feed .us { color: #4fd1c5; } #feed .them { color: #ff6b6b; } #feed .w { opacity: .75; margin: 0 6px; font-size: 12px; }
 #cross { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
-#cross i { position: absolute; background: #b6ff6b; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
-#cross i:nth-child(1) { left: -10px; top: -1px; width: 6px; height: 2px; }
-#cross i:nth-child(2) { left: 4px; top: -1px; width: 6px; height: 2px; }
-#cross i:nth-child(3) { left: -1px; top: -10px; width: 2px; height: 6px; }
-#cross i:nth-child(4) { left: -1px; top: 4px; width: 2px; height: 6px; }
+#cross i { position: absolute; background: var(--cross, #b6ff6b); box-shadow: 0 0 0 1px rgba(0,0,0,.65); transition: transform .05s; }
+#cross i:nth-child(1) { left: calc(-1 * var(--gap, 4px) - 7px); top: -1px; width: 7px; height: 2px; }
+#cross i:nth-child(2) { left: var(--gap, 4px); top: -1px; width: 7px; height: 2px; }
+#cross i:nth-child(3) { left: -1px; top: calc(-1 * var(--gap, 4px) - 7px); width: 2px; height: 7px; }
+#cross i:nth-child(4) { left: -1px; top: var(--gap, 4px); width: 2px; height: 7px; }
+#cross em { position: absolute; left: -1px; top: -1px; width: 2px; height: 2px; background: var(--cross, #b6ff6b); }
 #hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; opacity: 0; background:
   linear-gradient(45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%);
   -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px); mask: radial-gradient(circle, transparent 5px, #000 6px); }
@@ -111,3 +112,30 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; margin: 0 2px; b
 .sb table { border-collapse: collapse; min-width: 300px; font-size: 14px; }
 .sb th, .sb td { padding: 5px 10px; text-align: left; } .sb th { opacity: .6; font-size: 12px; }
 .sb tr.me td { color: #ffc94d; font-weight: 700; } .sb tr.dead td { opacity: .45; }
+
+/* ---------- 0.2 추가 ---------- */
+#hpBar.low { background: #ff6b6b; }
+#mag.low { color: #ff8a6b; }
+#prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(15,20,27,.8); border: 1px solid rgba(255,201,77,.5); padding: 8px 16px; border-radius: 10px; font-size: 15px; white-space: nowrap; }
+#prompt b { color: #ffc94d; }
+#killBanner { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); text-align: center; opacity: 0; pointer-events: none; }
+#killBanner.show { animation: kb 1.6s ease-out forwards; }
+#killBanner .icons { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
+#killBanner .icons i { width: 18px; height: 18px; transform: rotate(45deg); background: #ff5a3c; border: 2px solid #fff; }
+#killBanner b { font-size: 22px; color: #fff; letter-spacing: 1px; }
+@keyframes kb { 0% { opacity: 0; transform: translateX(-50%) scale(1.4); } 12% { opacity: 1; transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+.dn { position: absolute; font-weight: 800; font-size: 15px; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; animation: dn .7s ease-out forwards; }
+.dn.head { color: #ffc94d; font-size: 18px; }
+@keyframes dn { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
+#clickPlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10,14,20,.35); cursor: pointer; }
+#clickPlay div { background: rgba(15,20,27,.9); border: 1px solid rgba(255,255,255,.2); border-radius: 14px; padding: 18px 26px; text-align: center; }
+#clickPlay b { display: block; font-size: 20px; } #clickPlay small { opacity: .75; }
+.btn.hot { background: #ffc94d; border-color: #ffc94d; color: #1d2433; }
+.btn.hot:hover { background: #ffd770; }
+.settings { margin-top: 16px; text-align: left; background: rgba(255,255,255,.05); border-radius: 12px; padding: 8px 14px; }
+.settings summary { cursor: pointer; font-weight: 700; }
+.settings .opt { justify-content: space-between; }
+.opt b { min-width: 42px; text-align: right; }
+.how .sub { font-size: 12px; opacity: .75; margin-top: 8px; }
+#endStats b.us { color: #4fd1c5; } #endStats b.them, #center-msg small b.them { color: #ff6b6b; } #center-msg small b.us { color: #4fd1c5; }
+#pause .seg button { padding: 6px 10px; }

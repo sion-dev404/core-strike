@@ -1,6 +1,6 @@
 {
   "name": "core-strike",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "코어 스트라이크 — 3D 1인칭 5대5 전술 슈팅 (무과금)",
