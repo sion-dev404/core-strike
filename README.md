@@ -2,7 +2,9 @@
 
 브라우저에서 바로 하는 **3D 1인칭 5대5 전술 슈팅** 게임입니다. 결제 없는 완전 무료.
 
-▶ **플레이:** https://sion-dev404.github.io/core-strike/
+▶ **웹에서 바로 하기:** https://sion-dev404.github.io/core-strike/
+
+⬇ **Windows 설치 파일:** [최신 릴리스](https://github.com/sion-dev404/core-strike/releases/latest)에서 `CoreStrike-Setup-버전.exe`를 받아 실행하세요. (F11: 전체 화면)
 
 - 공격팀은 **코어**를 A나 B 지점에 설치해 터뜨리고, 수비팀은 막거나 해체합니다.
 - 라운드마다 번 돈으로 무기·방어구·능력을 삽니다. 먼저 5라운드를 이기면 승리, 4라운드 뒤 공수 교대.
@@ -20,6 +22,6 @@
 - **0.1** 첫 판
 
 ## 개발
-`npm install` → `npm run dev` (Three.js + Vite)
+`npm install` → `npm run dev` (Three.js + Vite) · 설치형 실행 `npm run app` · 설치 파일 만들기 `npm run dist` → `release/CoreStrike-Setup-<버전>.exe`
 
 캐릭터·맵·무기는 모두 이 게임을 위해 새로 만든 원작입니다.

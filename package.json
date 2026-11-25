@@ -7,12 +7,50 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "three": "^0.170.0"
+    "preview": "vite preview",
+    "app": "vite build && electron .",
+    "dist": "vite build && electron-builder --win nsis"
   },
   "devDependencies": {
-    "vite": "^6.4.1"
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.4.1",
+    "three": "^0.170.0"
+  },
+  "main": "electron/main.cjs",
+  "author": "sion-dev404",
+  "homepage": "https://sion-dev404.github.io/core-strike/",
+  "build": {
+    "appId": "io.github.sion-dev404.core-strike",
+    "productName": "코어 스트라이크",
+    "copyright": "코어 스트라이크",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "artifactName": "CoreStrike-Setup-${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "코어 스트라이크",
+      "installerLanguages": [
+        "ko_KR"
+      ],
+      "language": "1042",
+      "runAfterFinish": true
+    }
   }
 }
